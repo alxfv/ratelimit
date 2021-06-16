@@ -2,9 +2,10 @@ package ratelimit
 
 import (
 	"fmt"
-	"github.com/envoyproxy/ratelimit/src/stats"
 	"strings"
 	"sync"
+
+	"github.com/envoyproxy/ratelimit/src/stats"
 
 	pb "github.com/envoyproxy/go-control-plane/envoy/service/ratelimit/v3"
 	"github.com/envoyproxy/ratelimit/src/assert"
@@ -112,6 +113,7 @@ func (this *service) shouldRateLimitWorker(
 	}
 
 	responseDescriptorStatuses := this.cache.DoLimit(ctx, request, limitsToCheck)
+	logger.Debugf("after DoLimit, request: %v, limitsToCheck: %v", request, limitsToCheck)
 	assert.Assert(len(limitsToCheck) == len(responseDescriptorStatuses))
 
 	response := &pb.RateLimitResponse{}

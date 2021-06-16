@@ -1,7 +1,7 @@
 version: "3"
 services:
   redis:
-    image: redis:alpine
+    build: ./examples/ratelimit/services/redis
     expose:
       - 6379
     ports:
@@ -25,9 +25,21 @@ services:
     volumes:
       - ./examples/prom-statsd-exporter/conf.yaml:/etc/statsd-exporter/conf.yaml
 
+  ratelimit-build:
+    image: golang:1.14-alpine
+    working_dir: /go/src/github.com/envoyproxy/ratelimit
+    command: go build -o /usr/local/bin/ratelimit ./src/service_cmd/main.go
+    volumes:
+      - .:/go/src/github.com/envoyproxy/ratelimit
+      - binary:/usr/local/bin/
+
+
   ratelimit:
-    image: envoyproxy/ratelimit:master
-    command: /bin/ratelimit
+#    image: envoyproxy/ratelimit:master
+#    command: /bin/ratelimit
+    image: alpine:3.6
+    command: /usr/local/bin/ratelimit
+
     ports:
       - 8080:8080
       - 8081:8081
@@ -35,9 +47,11 @@ services:
     depends_on:
       - redis
       - statsd
+      - ratelimit-build
     networks:
       - ratelimit-network
     volumes:
+      - binary:/usr/local/bin/
       - ./examples/ratelimit/config:/data/ratelimit/config
     environment:
       - USE_STATSD=true
@@ -92,3 +106,6 @@ services:
 
 networks:
   ratelimit-network:
+
+volumes:
+  binary:

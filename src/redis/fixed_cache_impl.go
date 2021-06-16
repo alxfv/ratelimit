@@ -28,7 +28,7 @@ func pipelineAppend(client Client, pipeline *Pipeline, key string, hitsAddend ui
 	*pipeline = client.PipeAppend(*pipeline, nil, "EXPIRE", key, expirationSeconds)
 }
 
-func (this *fixedRateLimitCacheImpl) DoLimit(
+func (this *fixedRateLimitCacheImpl)  DoLimit(
 	ctx context.Context,
 	request *pb.RateLimitRequest,
 	limits []*config.RateLimit) []*pb.RateLimitResponse_DescriptorStatus {
@@ -92,6 +92,9 @@ func (this *fixedRateLimitCacheImpl) DoLimit(
 	for i, cacheKey := range cacheKeys {
 
 		limitAfterIncrease := results[i]
+
+		logger.Debugf("limitAfterIncrease (pipeline result): %v", limitAfterIncrease)
+
 		limitBeforeIncrease := limitAfterIncrease - hitsAddend
 
 		limitInfo := limiter.NewRateLimitInfo(limits[i], limitBeforeIncrease, limitAfterIncrease, 0, 0)

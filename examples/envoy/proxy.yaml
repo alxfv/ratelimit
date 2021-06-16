@@ -53,6 +53,8 @@ static_resources:
                       domain: rl
                       request_type: external
                       stage: 0
+                      # https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/http/ratelimit/v3/rate_limit.proto#extensions-filters-http-ratelimit-v3-ratelimit
+#                      timeout: 15ms
                       rate_limited_as_resource_exhausted: true
                       failure_mode_deny: false
                       rate_limit_service:
