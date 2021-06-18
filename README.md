@@ -610,3 +610,33 @@ to all ratelimiter instances to ensure that a particular cache key is always has
   We have the IRC/XMPP gateways enabled if you prefer either of those. Once an account is created,
   connection instructions for IRC/XMPP can be found [here](https://envoyproxy.slack.com/account/gateways).
   The `#ratelimit-users` channel is used for discussions about the ratelimit service.
+
+## Extra testing
+
+### Delay redis
+
+Default timeout for envoy.filters.http.ratelimit is 20ms. You can use [pumba](https://github.com/alexei-led/pumba)
+to manually delay all outgoing packets for Redis:  
+
+```
+docker-compose -f docker-compose-example.yml -d
+pumba netem --duration 5m delay --time 3000 ratelimit_redis_1
+```
+
+### Local running
+
+Run cmd/service_cmd with envs: 
+
+```shell
+LOCAL_CACHE_SIZE_IN_BYTES=1000000;BACKEND_TYPE=redis;REDIS_SOCKET_TYPE=tcp;REDIS_URL=localhost:6380;LOG_LEVEL=debug;USE_STATSD=false;RUNTIME_ROOT=./examples;RUNTIME_SUBDIRECTORY=ratelimit
+```
+
+Run client:
+
+```shell
+go run src/client_cmd/main.go -domain rl -descriptors foo=foo,bar=bar
+domain: rl
+dial string: localhost:8081
+descriptors: [ <key=foo, value=foo>  <key=bar, value=bar> ]
+response: overall_code:OK  statuses:{code:OK  current_limit:{requests_per_unit:3  unit:MINUTE}  limit_remaining:1  duration_until_reset:{seconds:4}}
+```
