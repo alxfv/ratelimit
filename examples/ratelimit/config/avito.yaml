@@ -1,0 +1,10 @@
+---
+domain: sandbox
+descriptors:
+  - key: path
+    value: /sum/
+    descriptors:
+      - key: xsource
+        rate_limit:
+          unit: second
+          requests_per_unit: 300

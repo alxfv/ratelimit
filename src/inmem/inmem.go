@@ -49,22 +49,26 @@ func (this *rateLimitInMemImpl) DoLimit(
 	responseDescriptorStatuses := make([]*pb.RateLimitResponse_DescriptorStatus,
 		len(request.Descriptors))
 
-	//isOverLimitWithLocalCache := make([]bool, len(request.Descriptors))
-	//
-	//keysToGet := make([]string, 0, len(request.Descriptors))
-
-	available := make(map[string]uint32)
-
-	logger.Debugf("desriptor limit: %v", request.Descriptors[0].Limit)
-	logger.Debugf("limit: %v", limits[0])
 
 	for i, key := range cacheKeys {
+		logger.Debugf("key: %v", key)
+		logger.Debugf("limit: %+v", limits[i])
 
 		limit := limits[i]
 
 		if limit == nil {
+			// default response
+			responseDescriptorStatuses[i] = this.baseRateLimiter.GetResponseDescriptorStatus(
+				key,
+				&limiter.LimitInfo{},
+				false,
+				hitsAddend,
+			)
+
 			continue
 		}
+
+		logger.Debugf("bucket key: %s", key)
 
 		if _, ok := this.buckets[key]; !ok {
 			capacity := int64(limit.Limit.RequestsPerUnit)
@@ -76,19 +80,26 @@ func (this *rateLimitInMemImpl) DoLimit(
 			fillInterval := time.Duration(interval) * time.Millisecond
 
 			this.buckets[key] = ratelimit.NewBucket(fillInterval, capacity)
+
+			logger.Debugf(
+				"create new bucket with fillInterval: %v, capacity: %v",
+				fillInterval,
+				capacity,
+			)
+		} else {
+			logger.Debugf("available tokens in bucket %s: %v", key, this.buckets[key].Available())
 		}
+
+		limitBeforeIncrease := uint32(this.buckets[key].Capacity() - this.buckets[key].Available())
 
 		taken := this.buckets[key].TakeAvailable(int64(hitsAddend))
 		logger.Debugf("tokens have been taken: %v", taken)
 
-		available[key] = limit.Limit.RequestsPerUnit - uint32(this.buckets[key].Available())
-	}
+		available := this.buckets[key].Available()
 
-	for i, key := range cacheKeys {
+		logger.Debugf("available tokens in bucket %s after increase: %v", key, available)
 
-		limitAfterIncrease := available[key]
-
-		limitBeforeIncrease := limitAfterIncrease - hitsAddend
+		limitAfterIncrease := limitBeforeIncrease + hitsAddend
 
 		logger.Debugf("limitBeforeIncrease: %v", limitBeforeIncrease)
 		logger.Debugf("limitAfterIncrease: %v", limitAfterIncrease)
@@ -100,6 +111,8 @@ func (this *rateLimitInMemImpl) DoLimit(
 			0,
 			0,
 		)
+
+		logger.Debugf("limitInfo: %v", limitInfo)
 
 		responseDescriptorStatuses[i] = this.baseRateLimiter.GetResponseDescriptorStatus(
 			key,
@@ -126,7 +139,7 @@ func NewRateLimiterInMemImplFromSettings(
 	expirationJitterMaxSeconds int64,
 	statsManager stats.Manager,
 ) limiter.RateLimitCache {
-	return NewFixedRateLimitInMemImpl(
+	return NewRateLimitInMemImpl(
 		timeSource,
 		jitterRand,
 		expirationJitterMaxSeconds,
@@ -137,7 +150,7 @@ func NewRateLimiterInMemImplFromSettings(
 	)
 }
 
-func NewFixedRateLimitInMemImpl(
+func NewRateLimitInMemImpl(
 	timeSource utils.TimeSource,
 	jitterRand *rand.Rand,
 	expirationJitterMaxSeconds int64,

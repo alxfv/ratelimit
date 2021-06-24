@@ -7,6 +7,7 @@ MODULE = github.com/envoyproxy/ratelimit
 GIT_REF = $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short=8 --verify HEAD)
 VERSION ?= $(GIT_REF)
 SHELL := /bin/bash
+UNAME := $(shell uname)
 
 .PHONY: bootstrap
 bootstrap: ;
@@ -38,9 +39,13 @@ bootstrap_redis_tls: redis.conf redis-per-second.conf
     -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=localhost" \
     -keyout key.pem  -out cert.pem
 	cat key.pem cert.pem > private.pem
+ifeq ($(UNAME), Darwin)
+	sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain cert.pem
+else
 	sudo cp cert.pem /usr/local/share/ca-certificates/redis-stunnel.crt
 	chmod 640 key.pem cert.pem private.pem
 	sudo update-ca-certificates
+endif
 	sudo stunnel redis.conf
 	sudo stunnel redis-per-second.conf
 .PHONY: docs_format
@@ -69,7 +74,7 @@ tests_unit: compile
 
 .PHONY: tests
 tests: compile
-	go test -race -tags=integration $(MODULE)/...
+	GODEBUG=x509ignoreCN=0 go test -race -tags=integration $(MODULE)/...
 
 .PHONY: tests_with_redis
 tests_with_redis: bootstrap_redis_tls tests_unit
@@ -99,7 +104,7 @@ tests_with_redis: bootstrap_redis_tls tests_unit
 	redis-cli --cluster check -a password123 127.0.0.1:6386
 	redis-cli --cluster check -a password123 127.0.0.1:6389
 
-	go test -race -tags=integration $(MODULE)/...
+	GODEBUG=x509ignoreCN=0 go test -race -tags=integration $(MODULE)/...
 
 .PHONY: docker_tests
 docker_tests:

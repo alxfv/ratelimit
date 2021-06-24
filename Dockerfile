@@ -1,4 +1,4 @@
-FROM golang:1.14 AS build
+FROM golang:1.16.5 AS build
 WORKDIR /ratelimit
 
 ENV GOPROXY=https://proxy.golang.org
@@ -13,3 +13,5 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /go/bin/ratelimit -ldflags="-w -s" -v g
 FROM alpine:3.11 AS final
 RUN apk --no-cache add ca-certificates
 COPY --from=build /go/bin/ratelimit /bin/ratelimit
+
+COPY examples/ratelimit/config/avito.yaml /data/ratelimit/config/

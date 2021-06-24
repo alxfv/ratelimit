@@ -27,3 +27,10 @@ descriptors:
         rate_limit:
           unit: second
           requests_per_unit: 1
+  - key: path
+    value: /sum/
+    descriptors:
+    - key: xsource
+      rate_limit:
+        unit: minute
+        requests_per_unit: 2
